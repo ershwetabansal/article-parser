@@ -34,7 +34,7 @@ module.exports.startCrawlOverWeb = function(test_callback){
 module.exports.startCrawlSpecific = function(host,category,config_obj,test_callback) {
 
 if (typeof (config_obj.url) === "undefined") {
-  console.log("There is some problem. Url is missing for "+host+", category :"+category);
+  // console.log("There is some problem. Url is missing for "+host+", category :"+category);
   return;
 }
 

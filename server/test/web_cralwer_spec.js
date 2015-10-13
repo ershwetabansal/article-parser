@@ -18,7 +18,6 @@ describe('News website crawling Tests',function() {
   }); 
 
   it('should retreive articles',function(){
-    // var array = article_parser.readArticle(html,host,category, new Date(2015,09,13,0,0,0));
     expect(articles).to.have.length(1);
   });
 

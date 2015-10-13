@@ -14,6 +14,12 @@ var array_Articles;
 
 module.exports.readArticle = function(html,host,category,url,date_override) {
   var date;
+  var saveHeadingFlag; /*First look for heading tag to find the title of the article */
+  var foundDateFlag; /*Then look for a date of the article */
+  var saveArticleFlag; /*Now start looking for article tag and start looking article content */
+  var doNotProcessThisTagFlag; /* skip tags such as script, style etc. */
+  // var skiptTag;
+
   if (typeof(date_override) !== "undefined" && date_override instanceof Date) date = date_override;
   else date = new Date();
 
@@ -25,23 +31,22 @@ module.exports.readArticle = function(html,host,category,url,date_override) {
     onopentag: function(name, attribs){
       var m;
       if (config_obj.skip_tags.indexOf(name) > -1) {
-        process.setdoNotProcessThisTagFlag(true);     
-        process.setSkipTag(name);
+        doNotProcessThisTagFlag = true;     
+        // skiptTag = name;
       } else {
-        process.setdoNotProcessThisTagFlag(false);     
-        process.setSkipTag("");
+        doNotProcessThisTagFlag = false;     
+        // skiptTag = "";
       }
     
-      if (!process.getdoNotProcessThisTagFlag()) {
+      if (!doNotProcessThisTagFlag) {
 
         if (config_obj.heading_tag.indexOf(name) > -1) {
-          process.setSaveHeadingFlag(true);
+          saveHeadingFlag = true;
         }
-        if (process.getFoundDateFlag())
-        if (process.getFoundDateFlag() && name === config_obj.article_tag) {
-          process.setSaveArticleFlag(true);
+        if (foundDateFlag && name === config_obj.article_tag) {
+          saveArticleFlag = true;
         }
-        if (process.getSaveArticleFlag() ) {
+        if (saveArticleFlag) {
           process.addTag(name);
           if (name === "img") {
             if (typeof (attribs.src) !== "undefined") {
@@ -53,34 +58,39 @@ module.exports.readArticle = function(html,host,category,url,date_override) {
       }
     },
     ontext: function(text){
-      if (!process.getdoNotProcessThisTagFlag()) {
+      if (!doNotProcessThisTagFlag) {
         text = text.trim();
-        if(process.getSaveHeadingFlag()) {  
+        if(saveHeadingFlag) {  
           process.saveHeading(text);
-          process.setSaveHeadingFlag(false);
+          saveHeadingFlag = false;
         }
 
-        if (process.getSaveArticleFlag()) {
+        if (saveArticleFlag) {
           // if (text.length > config_obj.min_text_size && config_obj.skip_words.indexOf(text) < 0) {
           if (config_obj.skip_words.indexOf(text) < 0) {
               process.saveArticle(text);            
           }
-        } else if (!process.getFoundDateFlag()){
+        } else if (!foundDateFlag){
           // check for date pattern.
           var m;
           if ((m = config_obj.date_matcher(date).exec(text))  != null) {
             process.saveDate(date);
-            process.setFoundDateFlag(true);
+            foundDateFlag = true;
           }
         }        
       }
     },
     onclosetag: function(tagname){
-        if(!process.getdoNotProcessThisTagFlag() && process.getSaveArticleFlag()) {
+        if(!doNotProcessThisTagFlag && saveArticleFlag) {
             process.removeTag();
           if (tagname == config_obj.article_tag && process.getStackSize() == 0) {
-            
-            process.done();
+            var success = process.done();
+            if (success) {
+                saveArticleFlag = false;
+                foundDateFlag = false;
+            } else {
+                saveArticleFlag = false;
+            }
           }
         }
     }
@@ -96,16 +106,11 @@ function processResults(){
 var article_content ="";
 var date ="";
 var heading = "";
-var foundDateFlag;
-var saveHeadingFlag;
-var saveArticleFlag;
-var doNotProcessThisTagFlag;
 var image_url = "";
 var host = "";
 var category = "";
 var src_url = "";
 var tag_stack = new Array();
-var skip_tag;
 
 return  {
   setBasicParams : function(h,cat,src) {
@@ -113,16 +118,6 @@ return  {
     category = cat;
     src_url = src;
   },
-  setFoundDateFlag : function(bool) {foundDateFlag = bool;},
-  getFoundDateFlag : function() {return foundDateFlag;},
-  setSaveHeadingFlag : function(bool) {saveHeadingFlag = bool;},
-  getSaveHeadingFlag : function() {return saveHeadingFlag;},
-  setSaveArticleFlag : function(bool) {saveArticleFlag = bool;},
-  getSaveArticleFlag : function() {return saveArticleFlag;},
-  setdoNotProcessThisTagFlag : function(bool) { doNotProcessThisTagFlag = bool;},
-  getdoNotProcessThisTagFlag : function() {return doNotProcessThisTagFlag;},
-  setSkipTag : function(tag) {skip_tag = tag;},
-  getSkipTag : function() {return skip_tag;},
   setImageURL : function(url) {this.image_url = url;},
   saveHeading : function(head) {heading = head;},
   saveArticle : function(arc) {article_content = article_content + "<br>" + arc;},
@@ -135,8 +130,8 @@ return  {
     var m;
     var result = (m = config_obj.match_words.exec(article_content)) ;
     if (result != null && article_content.length >  config_obj.min_article_size) {
-      // console.log("******************************************************************************");
-      // console.log("url :"+src_url);
+      console.log("******************************************************************************");
+      console.log("url :"+src_url);
       // console.log("Finally date :"+date+", article :"+article_content);
       // console.log("******************************************************************************");
       var article = articlejs.getNewInstance();
@@ -150,14 +145,11 @@ return  {
       
       array_Articles.push(JSON.parse(JSON.stringify(article)));
 
-      saveArticleFlag = false;
-      foundDateFlag = false;
+      article_content = "";
+      return true;
     } else {
-      // console.log("came here means length is less than  "+config_obj.min_letters);
-      saveArticleFlag = false;
-      
+      return false;
     }
-    article_content = "";
 
   }
 };
