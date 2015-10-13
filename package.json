@@ -1,24 +1,15 @@
 {
-  "name": "news-portal",
+  "name": "article-parser",
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "start": "node app"
+    "start": "node index.js"
   },
   "dependencies": {
-    "body-parser": "~1.13.3",
     "chai": "^3.3.0",
-    "ejs": "~2.3.3",
-    "express": "^4.13.3",
     "htmlparser2": "^3.8.3",
-    "jasmine-core": "^2.3.4",
-    "jasmine-node": "^1.14.5",
-    "karma": "^0.13.10",
-    "karma-chrome-launcher": "^0.2.1",
-    "karma-jasmine": "^0.3.6",
-    "method-override": "~2.3.5",
     "mocha": "^2.3.3",
     "mongoose": "^4.1.10",
-    "simplecrawler": "^0.5.4"
+    "simplecrawler": "^0.5.4",
   }
 }

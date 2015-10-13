@@ -1,3 +1,7 @@
+/**
+* This parser parses the html document of each page of the news website. It assumes that the way html 
+* is written for one website is consistent on each page.
+**/
 "use strict";
 
 var htmlparser = require('htmlparser2');
@@ -5,26 +9,27 @@ var config = require('../config/parser_config.js');
 var articlejs = require('../models/article.js');
 
 var config_obj;
-var article ;
+ 
 var array_Articles;
 
-module.exports.readArticle = function(html,host,category,url,callback) {
+module.exports.readArticle = function(html,host,category,url,date_override) {
+  var date;
+  if (typeof(date_override) !== "undefined" && date_override instanceof Date) date = date_override;
+  else date = new Date();
+
   config_obj = config.getCrawlingConfig(host,category);
-  article = articlejs.getNewInstance();
-  // console.log("article_tag:"+config_obj.article_tag);
   array_Articles = new Array();
-  // console.log("config_obj.date_matcher() :"+config_obj.date_matcher());
-  // console.log("config.getDates() :"+config.getDates());
-  
   var process = processResults();
   process.setBasicParams(host,category,url);
   var parser = new htmlparser.Parser({
     onopentag: function(name, attribs){
       var m;
-      // console.log("--Open tag:"+name);
       if (config_obj.skip_tags.indexOf(name) > -1) {
         process.setdoNotProcessThisTagFlag(true);     
         process.setSkipTag(name);
+      } else {
+        process.setdoNotProcessThisTagFlag(false);     
+        process.setSkipTag("");
       }
     
       if (!process.getdoNotProcessThisTagFlag()) {
@@ -32,9 +37,8 @@ module.exports.readArticle = function(html,host,category,url,callback) {
         if (config_obj.heading_tag.indexOf(name) > -1) {
           process.setSaveHeadingFlag(true);
         }
-          
+        if (process.getFoundDateFlag())
         if (process.getFoundDateFlag() && name === config_obj.article_tag) {
-        // console.log("--Open tag:"+name);
           process.setSaveArticleFlag(true);
         }
         if (process.getSaveArticleFlag() ) {
@@ -49,11 +53,9 @@ module.exports.readArticle = function(html,host,category,url,callback) {
       }
     },
     ontext: function(text){
-// console.log("article:"+text);
       if (!process.getdoNotProcessThisTagFlag()) {
         text = text.trim();
         if(process.getSaveHeadingFlag()) {  
-        console.log("heading:"+text);      
           process.saveHeading(text);
           process.setSaveHeadingFlag(false);
         }
@@ -62,41 +64,30 @@ module.exports.readArticle = function(html,host,category,url,callback) {
           // if (text.length > config_obj.min_text_size && config_obj.skip_words.indexOf(text) < 0) {
           if (config_obj.skip_words.indexOf(text) < 0) {
               process.saveArticle(text);            
-              // console.log("article:"+text);
           }
         } else if (!process.getFoundDateFlag()){
           // check for date pattern.
           var m;
-          if ((m = config_obj.date_matcher().exec(text))  != null) {
-            // process.setSaveArticleFlag(true);
-            console.log("Matched date :"+m);
-            process.saveDate(config.getDateType(m));
+          if ((m = config_obj.date_matcher(date).exec(text))  != null) {
+            process.saveDate(date);
             process.setFoundDateFlag(true);
           }
         }        
       }
     },
     onclosetag: function(tagname){
-      // console.log("--Close tag:"+tagname);
         if(!process.getdoNotProcessThisTagFlag() && process.getSaveArticleFlag()) {
             process.removeTag();
-            // console.log("--Close tag:"+tagname+",stack :"+process.getStack());
           if (tagname == config_obj.article_tag && process.getStackSize() == 0) {
             
             process.done();
           }
-        } else if (process.getdoNotProcessThisTagFlag() && process.getSkipTag() === tagname ) {
-          process.setdoNotProcessThisTagFlag(false);     
-          process.setSkipTag("");
         }
     }
   }, {decodeEntities: true});
   parser.write(html);
   parser.end();
-  // console.log("pattern:"+config.getSkipTag());
-
-// return array_Articles;
-
+  return array_Articles;
 };
 
 /* A closure to maintain required data while parsing an html page. This data includes all
@@ -119,7 +110,7 @@ var skip_tag;
 return  {
   setBasicParams : function(h,cat,src) {
     host = h;
-    cat = category;
+    category = cat;
     src_url = src;
   },
   setFoundDateFlag : function(bool) {foundDateFlag = bool;},
@@ -144,10 +135,11 @@ return  {
     var m;
     var result = (m = config_obj.match_words.exec(article_content)) ;
     if (result != null && article_content.length >  config_obj.min_article_size) {
-      console.log("******************************************************************************");
-      console.log("url :"+src_url);
-      console.log("Finally date :"+date+", article :"+article_content);
-      console.log("******************************************************************************");
+      // console.log("******************************************************************************");
+      // console.log("url :"+src_url);
+      // console.log("Finally date :"+date+", article :"+article_content);
+      // console.log("******************************************************************************");
+      var article = articlejs.getNewInstance();
       article.date = date;
       article.heading = heading;
       article.article_content = "" + article_content + "" ;
@@ -156,7 +148,7 @@ return  {
       article.category = category;
       article.src_url = src_url;
       
-      array_Articles.push(article);
+      array_Articles.push(JSON.parse(JSON.stringify(article)));
 
       saveArticleFlag = false;
       foundDateFlag = false;
