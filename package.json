@@ -3,13 +3,12 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "start": "node index.js"
   },
   "dependencies": {
     "chai": "^3.3.0",
     "htmlparser2": "^3.8.3",
     "mocha": "^2.3.3",
     "mongoose": "^4.1.10",
-    "simplecrawler": "^0.5.4",
+    "simplecrawler": "^0.5.4"
   }
 }
